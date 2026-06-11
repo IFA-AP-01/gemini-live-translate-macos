@@ -22,6 +22,8 @@ final class AppState: ObservableObject {
     @Published private(set) var logs: [LogEntry] = []
     @Published var showSetupSheet = false
     @Published var availableMicrophones: [AudioDevice] = []
+    @Published private(set) var audioLevel: Float = 0.0
+
     
     private var propertyListenerBlock: AudioObjectPropertyListenerBlock?
 
@@ -126,6 +128,7 @@ final class AppState: ObservableObject {
         client = nil
         audioPlayer.stop()
         finishTranscriptSession()
+        audioLevel = 0.0
         isRunning = false
         updateStatus("Stopped", level: .stopped, log: true)
     }
@@ -272,9 +275,10 @@ final class AppState: ObservableObject {
 
     private func audioSink(source: AudioSource) -> @Sendable (Data) -> Void {
         { [weak self] data in
+            let level = AppState.calculateRMS(data: data)
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                self.recordAudioChunk(source: source)
+                self.recordAudioChunk(source: source, level: level)
                 let client = self.client
                 Task {
                     await client?.sendAudio(data)
@@ -283,7 +287,7 @@ final class AppState: ObservableObject {
         }
     }
 
-    private func recordAudioChunk(source: AudioSource) {
+    private func recordAudioChunk(source: AudioSource, level: Float) {
         switch source {
         case .microphone:
             micChunkCount += 1
@@ -293,6 +297,8 @@ final class AppState: ObservableObject {
             break
         }
         sentChunkCount += 1
+
+        audioLevel = audioLevel * 0.7 + level * 0.3
 
         let now = Date()
         guard now.timeIntervalSince(lastAudioStatusAt) >= 1 else { return }
@@ -306,6 +312,26 @@ final class AppState: ObservableObject {
         screenChunkCount = 0
         sentChunkCount = 0
         lastAudioStatusAt = .distantPast
+        audioLevel = 0.0
+    }
+
+    nonisolated private static func calculateRMS(data: Data) -> Float {
+        let count = data.count / 2
+        guard count > 0 else { return 0 }
+        
+        return data.withUnsafeBytes { buffer -> Float in
+            guard let pointer = buffer.bindMemory(to: Int16.self).baseAddress else { return 0 }
+            
+            var sumSquares: Float = 0
+            for i in 0..<count {
+                let sample = Float(pointer[i])
+                sumSquares += sample * sample
+            }
+            
+            let rms = sqrt(sumSquares / Float(count))
+            let normalized = rms / 32767.0
+            return min(max(normalized, 0.0), 1.0)
+        }
     }
 
     private func appendOriginalText(_ text: String) {
