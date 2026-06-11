@@ -4,6 +4,7 @@ struct TranscriptsView: View {
     @EnvironmentObject private var appState: AppState
     @Binding var selectedSession: TranscriptSession?
     @State private var searchText = ""
+    @State private var viewMode: TranscriptViewMode = .both
 
     private var filteredSessions: [TranscriptSession] {
         if searchText.isEmpty {
@@ -168,6 +169,37 @@ struct TranscriptsView: View {
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
+                
+                Divider()
+                    .padding(.vertical, 4)
+                
+                HStack(spacing: 12) {
+                    Picker("", selection: $viewMode) {
+                        ForEach(TranscriptViewMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 240)
+
+                    Spacer()
+
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(session.textForMode(viewMode), forType: .string)
+                    } label: {
+                        Label("Copy All", systemImage: "doc.on.doc")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+
+                    ShareLink(item: session.textForMode(viewMode)) {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+                }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
@@ -197,7 +229,7 @@ struct TranscriptsView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 10) {
                         ForEach(session.lines) { line in
-                            TranscriptLineRow(line: line)
+                            TranscriptLineRow(line: line, mode: viewMode)
                         }
                     }
                     .padding(20)
@@ -266,17 +298,36 @@ struct SessionCard: View {
 
 struct TranscriptLineRow: View {
     let line: TranscriptLine
+    let mode: TranscriptViewMode
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 12) {
             Text(line.timestamp, style: .time)
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.tertiary)
                 .frame(width: 60, alignment: .leading)
 
-            Text(line.text)
-                .font(.callout)
-                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 4) {
+                switch mode {
+                case .both:
+                    if let originalText = line.originalText, !originalText.isEmpty {
+                        Text(originalText)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(line.text)
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(.primary)
+                case .original:
+                    Text(line.originalText ?? line.text)
+                        .font(.callout)
+                        .foregroundStyle(.primary)
+                case .translated:
+                    Text(line.text)
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(.primary)
+                }
+            }
         }
     }
 }

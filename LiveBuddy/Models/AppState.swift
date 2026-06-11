@@ -41,6 +41,9 @@ final class AppState: ObservableObject {
     private var screenChunkCount = 0
     private var sentChunkCount = 0
     private var lastAudioStatusAt = Date.distantPast
+    
+    private var originalDraft = ""
+    private var completedOriginalSentences: [String] = []
 
     init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -73,6 +76,8 @@ final class AppState: ObservableObject {
 
         captions.removeAll()
         captionDraft = ""
+        originalDraft = ""
+        completedOriginalSentences.removeAll()
         resetAudioCounters()
         beginTranscriptSession()
         updateStatus("Connecting", level: .connecting, log: true)
@@ -81,6 +86,7 @@ final class AppState: ObservableObject {
         client.onInputTranscript = { [weak self] text, language in
             Task { @MainActor [weak self] in
                 self?.appendLog("Input\(language.map { " [\($0)]" } ?? ""): \(text)", level: .info)
+                self?.appendOriginalText(text)
             }
         }
         client.onOutputTranscript = { [weak self] text, language in
@@ -231,13 +237,33 @@ final class AppState: ObservableObject {
         lastAudioStatusAt = .distantPast
     }
 
+    private func appendOriginalText(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        var pending = originalDraft + (originalDraft.isEmpty ? "" : " ") + trimmed
+        let sentences = completedSentences(from: pending)
+        for sentence in sentences.completed {
+            completedOriginalSentences.append(sentence)
+        }
+        originalDraft = sentences.remainder
+    }
+
     private func appendCaption(_ text: String, language: String?, kind: CaptionKind) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         var pending = captionDraft + (captionDraft.isEmpty ? "" : " ") + trimmed
         let sentences = completedSentences(from: pending)
         for sentence in sentences.completed {
-            captions.append(CaptionLine(text: sentence, languageCode: language, kind: kind))
+            let original: String?
+            if !completedOriginalSentences.isEmpty {
+                original = completedOriginalSentences.removeFirst()
+            } else if !originalDraft.isEmpty {
+                original = originalDraft
+                originalDraft = ""
+            } else {
+                original = nil
+            }
+            captions.append(CaptionLine(text: sentence, originalText: original, languageCode: language, kind: kind))
         }
         pending = sentences.remainder
         captionDraft = pending
@@ -370,9 +396,23 @@ final class AppState: ObservableObject {
         guard let sessionID = currentSessionID,
               let index = transcriptSessions.firstIndex(where: { $0.id == sessionID }) else { return }
 
+        // Flush any remaining drafts
+        if !captionDraft.isEmpty {
+            let original = !completedOriginalSentences.isEmpty ? completedOriginalSentences.joined(separator: " ") : originalDraft
+            captions.append(CaptionLine(
+                text: captionDraft,
+                originalText: original.isEmpty ? nil : original,
+                languageCode: settings.targetLanguageCode,
+                kind: .output
+            ))
+            captionDraft = ""
+            originalDraft = ""
+            completedOriginalSentences.removeAll()
+        }
+
         let outputLines = captions
             .filter { $0.kind == .output }
-            .map { TranscriptLine(id: $0.id, text: $0.text, languageCode: $0.languageCode, timestamp: $0.timestamp) }
+            .map { TranscriptLine(id: $0.id, text: $0.text, originalText: $0.originalText, languageCode: $0.languageCode, timestamp: $0.timestamp) }
 
         var session = transcriptSessions[index]
         session.lines = outputLines
@@ -477,9 +517,19 @@ enum CaptionKind {
 }
 
 struct CaptionLine: Identifiable, Equatable {
-    let id = UUID()
+    let id: UUID
     let text: String
+    let originalText: String?
     let languageCode: String?
     let kind: CaptionKind
-    let timestamp = Date()
+    let timestamp: Date
+
+    init(id: UUID = UUID(), text: String, originalText: String? = nil, languageCode: String?, kind: CaptionKind, timestamp: Date = Date()) {
+        self.id = id
+        self.text = text
+        self.originalText = originalText
+        self.languageCode = languageCode
+        self.kind = kind
+        self.timestamp = timestamp
+    }
 }
