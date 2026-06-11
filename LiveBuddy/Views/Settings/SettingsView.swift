@@ -132,6 +132,19 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+
+                if appState.settings.audioSource == .microphone || appState.settings.audioSource == .both {
+                    Picker("Microphone", selection: appState.binding(\.selectedMicrophoneDeviceUID)) {
+                        Text("System Default").tag(nil as String?)
+                        ForEach(appState.availableMicrophones) { device in
+                            Text(device.name).tag(device.uid as String?)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onAppear {
+                        appState.refreshAvailableMicrophones()
+                    }
+                }
                 
                 Picker("Translate to", selection: appState.binding(\.targetLanguageCode)) {
                     ForEach(TranslationLanguage.all) { language in

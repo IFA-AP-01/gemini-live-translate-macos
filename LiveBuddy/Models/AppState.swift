@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import SwiftUI
 import AppKit
+import CoreAudio
 
 @MainActor
 final class AppState: ObservableObject {
@@ -20,6 +21,9 @@ final class AppState: ObservableObject {
     @Published private(set) var transcriptSessions: [TranscriptSession] = []
     @Published private(set) var logs: [LogEntry] = []
     @Published var showSetupSheet = false
+    @Published var availableMicrophones: [AudioDevice] = []
+    
+    private var propertyListenerBlock: AudioObjectPropertyListenerBlock?
 
     var isProviderConfigured: Bool {
         !settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -52,6 +56,8 @@ final class AppState: ObservableObject {
         loadTranscriptSessions()
         appendLog("App ready", level: .info)
         updateAudioPlayerVolume()
+        refreshAvailableMicrophones()
+        startListeningForDeviceChanges()
     }
 
     func start() async {
@@ -167,7 +173,7 @@ final class AppState: ObservableObject {
     private func startCapture() async throws {
         if settings.audioSource == .microphone || settings.audioSource == .both {
             let mic = MicrophoneCapture(onAudioChunk: audioSink(source: .microphone))
-            try await mic.start()
+            try await mic.start(selectedDeviceUID: settings.selectedMicrophoneDeviceUID)
             microphoneCapture = mic
             updateStatus("Microphone capture started", level: .connecting, log: true)
         }
@@ -400,6 +406,49 @@ final class AppState: ObservableObject {
         guard let data = try? Data(contentsOf: transcriptsURL),
               let decoded = try? JSONDecoder().decode([TranscriptSession].self, from: data) else { return }
         transcriptSessions = decoded
+    }
+
+    func refreshAvailableMicrophones() {
+        availableMicrophones = AudioDeviceManager.getInputDevices()
+    }
+
+    private func startListeningForDeviceChanges() {
+        var propertyAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        
+        let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+            Task { @MainActor in
+                self?.refreshAvailableMicrophones()
+            }
+        }
+        
+        self.propertyListenerBlock = block
+        
+        AudioObjectAddPropertyListenerBlock(
+            AudioObjectID(kAudioObjectSystemObject),
+            &propertyAddress,
+            DispatchQueue.main,
+            block
+        )
+    }
+
+    deinit {
+        if let block = propertyListenerBlock {
+            var propertyAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioHardwarePropertyDevices,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            AudioObjectRemovePropertyListenerBlock(
+                AudioObjectID(kAudioObjectSystemObject),
+                &propertyAddress,
+                DispatchQueue.main,
+                block
+            )
+        }
     }
 }
 

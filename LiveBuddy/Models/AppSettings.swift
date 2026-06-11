@@ -214,6 +214,7 @@ struct AppSettings: Codable, Equatable {
     var targetLanguageCode = "vi"
     var userPrompt = "Translate the incoming speech naturally. Keep names, code terms, and product names intact."
     var audioSource: AudioSource = .screen
+    var selectedMicrophoneDeviceUID: String? = nil
     var backgroundOpacity = 0.68
     var echoTargetLanguage = true
     var subtitleScreenFrame: SubtitleScreenFrame?
@@ -237,6 +238,7 @@ struct AppSettings: Codable, Equatable {
             || userPrompt != other.userPrompt
             || audioSource != other.audioSource
             || echoTargetLanguage != other.echoTargetLanguage
+            || selectedMicrophoneDeviceUID != other.selectedMicrophoneDeviceUID
     }
 }
 
