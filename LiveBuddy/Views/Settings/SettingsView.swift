@@ -1,30 +1,79 @@
 import SwiftUI
 
+enum NavigationItem: Hashable {
+    case settings
+    case transcripts
+    case logs
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
+    @State private var selectedItem: NavigationItem? = .settings
+    @State private var selectedTranscript: TranscriptSession?
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-
-            TabView {
-                settingsForm
-                    .tabItem {
-                        Label("Settings", systemImage: "gearshape")
+        NavigationSplitView {
+            List(selection: $selectedItem) {
+                HStack(spacing: 8) {
+                    Image(systemName: "captions.bubble.fill")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(.tint)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("LiveBuddy")
+                            .font(.headline)
+                        HStack(spacing: 5) {
+                            StatusDot(level: appState.statusLevel)
+                            Text(appState.statusMessage)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
-
-                logsView
-                    .tabItem {
-                        Label("Logs", systemImage: "list.bullet.rectangle")
-                    }
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 4)
+                
+                NavigationLink(value: NavigationItem.settings) {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                
+                NavigationLink(value: NavigationItem.transcripts) {
+                    Label("Transcripts", systemImage: "text.bubble")
+                }
+                
+                NavigationLink(value: NavigationItem.logs) {
+                    Label("Logs", systemImage: "list.bullet.rectangle")
+                }
             }
-            .padding(.top, 8)
-
-            Divider()
-            footer
+            .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
+        } detail: {
+            Group {
+                switch selectedItem {
+                case .settings, .none:
+                    settingsForm
+                case .transcripts:
+                    TranscriptsView(selectedSession: $selectedTranscript)
+                case .logs:
+                    logsView
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(nsColor: .windowBackgroundColor))
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        appState.toggle()
+                    } label: {
+                        Label(appState.isRunning ? "Stop" : "Start", systemImage: appState.isRunning ? "stop.fill" : "play.fill")
+                            .labelStyle(.titleAndIcon)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(appState.settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .padding(.horizontal, 16)
+                }
+            }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private var settingsForm: some View {
@@ -119,7 +168,6 @@ struct SettingsView: View {
                     }
                 }
 
-                // Live preview
                 Text("Preview text")
                     .font(.system(size: CGFloat(appState.settings.subtitleFontSize)))
                     .bold(appState.settings.subtitleIsBold)
@@ -171,47 +219,6 @@ struct SettingsView: View {
                 }
             }
         }
-    }
-
-    private var header: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "captions.bubble.fill")
-                .font(.system(size: 26, weight: .semibold))
-                .foregroundStyle(.tint)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("LiveBuddy")
-                    .font(.title2.weight(.semibold))
-                HStack(spacing: 7) {
-                    StatusDot(level: appState.statusLevel)
-                    Text(appState.statusMessage)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            Button {
-                appState.toggle()
-            } label: {
-                Label(appState.isRunning ? "Stop" : "Start", systemImage: appState.isRunning ? "stop.fill" : "play.fill")
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(appState.settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        }
-        .padding(20)
-    }
-
-    private var footer: some View {
-        HStack {
-            Text("Model: gemini-3.5-live-translate-preview")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(appState.settings.audioSource.title)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
     }
 }
 

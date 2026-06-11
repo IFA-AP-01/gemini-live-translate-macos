@@ -17,13 +17,16 @@ final class AppState: ObservableObject {
     @Published private(set) var statusMessage = "Ready"
     @Published private(set) var statusLevel: LiveStatusLevel = .stopped
     @Published private(set) var logs: [LogEntry] = []
+    @Published private(set) var transcriptSessions: [TranscriptSession] = []
 
     private let settingsURL: URL
+    private let transcriptsURL: URL
     private var client: GeminiLiveTranslateClient?
     private var microphoneCapture: MicrophoneCapture?
     private var screenCapture: ScreenAudioCapture?
     private let audioPlayer = PCM16AudioPlayer()
     private var restartTask: Task<Void, Never>?
+    private var currentSessionID: UUID?
     private var micChunkCount = 0
     private var screenChunkCount = 0
     private var sentChunkCount = 0
@@ -33,12 +36,14 @@ final class AppState: ObservableObject {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             .appendingPathComponent("LiveBuddy", isDirectory: true)
         settingsURL = support.appendingPathComponent("settings.json")
+        transcriptsURL = support.appendingPathComponent("transcripts.json")
         if let data = try? Data(contentsOf: settingsURL),
            let decoded = try? JSONDecoder().decode(AppSettings.self, from: data) {
             settings = decoded
         } else {
             settings = AppSettings()
         }
+        loadTranscriptSessions()
         appendLog("App ready", level: .info)
     }
 
@@ -53,6 +58,7 @@ final class AppState: ObservableObject {
         captions.removeAll()
         captionDraft = ""
         resetAudioCounters()
+        beginTranscriptSession()
         updateStatus("Connecting", level: .connecting, log: true)
 
         let client = GeminiLiveTranslateClient(settings: settings)
@@ -97,6 +103,7 @@ final class AppState: ObservableObject {
         client?.close()
         client = nil
         audioPlayer.stop()
+        finishTranscriptSession()
         isRunning = false
         updateStatus("Stopped", level: .stopped, log: true)
     }
@@ -321,6 +328,63 @@ final class AppState: ObservableObject {
         if logs.count > 400 {
             logs.removeFirst(logs.count - 400)
         }
+    }
+
+    // MARK: - Transcript Sessions
+
+    private func beginTranscriptSession() {
+        let session = TranscriptSession(
+            id: UUID(),
+            startedAt: Date(),
+            endedAt: nil,
+            targetLanguage: TranslationLanguage.name(for: settings.targetLanguageCode),
+            audioSource: settings.audioSource.title,
+            lines: []
+        )
+        currentSessionID = session.id
+        transcriptSessions.insert(session, at: 0)
+    }
+
+    private func finishTranscriptSession() {
+        guard let sessionID = currentSessionID,
+              let index = transcriptSessions.firstIndex(where: { $0.id == sessionID }) else { return }
+
+        let outputLines = captions
+            .filter { $0.kind == .output }
+            .map { TranscriptLine(id: $0.id, text: $0.text, languageCode: $0.languageCode, timestamp: $0.timestamp) }
+
+        var session = transcriptSessions[index]
+        session.lines = outputLines
+        session.endedAt = Date()
+        transcriptSessions[index] = session
+        currentSessionID = nil
+        saveTranscriptSessions()
+    }
+
+    func deleteTranscriptSession(_ session: TranscriptSession) {
+        transcriptSessions.removeAll { $0.id == session.id }
+        saveTranscriptSessions()
+    }
+
+    func deleteAllTranscriptSessions() {
+        transcriptSessions.removeAll()
+        saveTranscriptSessions()
+    }
+
+    private func saveTranscriptSessions() {
+        do {
+            try FileManager.default.createDirectory(at: transcriptsURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(transcriptSessions)
+            try data.write(to: transcriptsURL, options: [.atomic])
+        } catch {
+            appendLog("Cannot save transcripts: \(error.localizedDescription)", level: .error)
+        }
+    }
+
+    private func loadTranscriptSessions() {
+        guard let data = try? Data(contentsOf: transcriptsURL),
+              let decoded = try? JSONDecoder().decode([TranscriptSession].self, from: data) else { return }
+        transcriptSessions = decoded
     }
 }
 

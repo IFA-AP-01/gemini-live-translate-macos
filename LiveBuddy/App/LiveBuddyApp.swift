@@ -14,6 +14,7 @@ struct LiveBuddyApp: App {
                     appDelegate.configure(with: appState)
                 }
         }
+        .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
 
         MenuBarExtra("LiveBuddy", systemImage: appState.isRunning ? "captions.bubble.fill" : "captions.bubble") {
