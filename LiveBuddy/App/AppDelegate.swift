@@ -1,27 +1,4 @@
-import SwiftUI
-
-@main
-struct LiveBuddyApp: App {
-    @StateObject private var appState = AppState()
-    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-
-    var body: some Scene {
-        WindowGroup("Settings", id: "settings") {
-            SettingsView()
-                .environmentObject(appState)
-                .frame(minWidth: 560, minHeight: 520)
-                .onAppear {
-                    appDelegate.configure(with: appState)
-                }
-        }
-        .windowResizability(.contentSize)
-
-        MenuBarExtra("LiveBuddy", systemImage: appState.isRunning ? "captions.bubble.fill" : "captions.bubble") {
-            MenuBarView()
-                .environmentObject(appState)
-        }
-    }
-}
+import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var captionPanel: CaptionPanelController?
@@ -53,8 +30,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NotificationCenter.default.removeObserver(showCaptionObserver)
         }
     }
-}
-
-extension Notification.Name {
-    static let showCaptionWindow = Notification.Name("LiveBuddyShowCaptionWindow")
 }
