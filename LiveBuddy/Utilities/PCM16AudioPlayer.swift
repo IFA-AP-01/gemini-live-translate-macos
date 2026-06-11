@@ -21,6 +21,12 @@ final class PCM16AudioPlayer {
         }
     }
 
+    nonisolated func setVolume(_ volume: Float) {
+        queue.async { [weak self] in
+            self?.player.volume = volume
+        }
+    }
+
     private nonisolated func enqueue(_ data: Data, sampleRate: Double) {
         do {
             try prepare(sampleRate: sampleRate)

@@ -139,6 +139,26 @@ struct SettingsView: View {
                     }
                 }
                 Toggle("Echo target language", isOn: appState.binding(\.echoTargetLanguage))
+                
+                HStack {
+                    Text("Translation volume")
+                    Spacer()
+                    Button {
+                        appState.updateSetting(\.audioPlayerMuted, to: !appState.settings.audioPlayerMuted)
+                    } label: {
+                        Image(systemName: appState.settings.audioPlayerMuted || appState.settings.audioPlayerVolume == 0 ? "speaker.slash.fill" : (appState.settings.audioPlayerVolume < 0.5 ? "speaker.wave.1.fill" : "speaker.wave.2.fill"))
+                            .frame(width: 20)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Slider(value: appState.binding(\.audioPlayerVolume), in: 0...1)
+                        .disabled(appState.settings.audioPlayerMuted)
+                        .frame(width: 100)
+                    
+                    Text("\(Int(appState.settings.audioPlayerVolume * 100))%")
+                        .monospacedDigit()
+                        .frame(width: 42, alignment: .trailing)
+                }
             }
 
             Section("Caption Window") {

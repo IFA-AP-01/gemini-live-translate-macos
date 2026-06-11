@@ -117,6 +117,32 @@ struct CaptionView: View {
             .controlSize(.small)
             .frame(width: 82)
             .help("Transparency")
+
+            Color.white.opacity(0.2)
+                .frame(width: 1, height: 12)
+
+            Button {
+                appState.updateSetting(\.audioPlayerMuted, to: !appState.settings.audioPlayerMuted)
+            } label: {
+                Image(systemName: appState.settings.audioPlayerMuted || appState.settings.audioPlayerVolume == 0 ? "speaker.slash.fill" : (appState.settings.audioPlayerVolume < 0.5 ? "speaker.wave.1.fill" : "speaker.wave.2.fill"))
+                    .font(.system(size: 12, weight: .semibold))
+                    .frame(width: 16)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.white.opacity(0.86))
+            .help(appState.settings.audioPlayerMuted ? "Unmute" : "Mute")
+
+            Slider(
+                value: Binding(
+                    get: { appState.settings.audioPlayerVolume },
+                    set: { appState.updateSetting(\.audioPlayerVolume, to: $0) }
+                ),
+                in: 0...1
+            )
+            .disabled(appState.settings.audioPlayerMuted)
+            .controlSize(.small)
+            .frame(width: 60)
+            .help("Volume")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 5)

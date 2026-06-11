@@ -218,6 +218,10 @@ struct AppSettings: Codable, Equatable {
     var echoTargetLanguage = true
     var subtitleScreenFrame: SubtitleScreenFrame?
 
+    // Audio Player
+    var audioPlayerVolume: Double = 1.0
+    var audioPlayerMuted: Bool = false
+
     // Subtitle styling
     var subtitleFontSize: Double = 28
     var subtitleFontName: SubtitleFontName = .system

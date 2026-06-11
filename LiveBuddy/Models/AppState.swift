@@ -9,6 +9,7 @@ final class AppState: ObservableObject {
         didSet {
             saveSettings()
             rebuildRunningSessionIfNeeded(oldValue: oldValue)
+            updateAudioPlayerVolume()
         }
     }
     @Published private(set) var captions: [CaptionLine] = []
@@ -50,6 +51,7 @@ final class AppState: ObservableObject {
         }
         loadTranscriptSessions()
         appendLog("App ready", level: .info)
+        updateAudioPlayerVolume()
     }
 
     func start() async {
@@ -308,6 +310,11 @@ final class AppState: ObservableObject {
             await self?.stop()
             await self?.start()
         }
+    }
+
+    private func updateAudioPlayerVolume() {
+        let volume = settings.audioPlayerMuted ? 0.0 : settings.audioPlayerVolume
+        audioPlayer.setVolume(Float(volume))
     }
 
     private func handleClientStatus(_ message: String) {
