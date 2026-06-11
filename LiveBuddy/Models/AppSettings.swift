@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 enum AudioSource: String, CaseIterable, Codable, Identifiable {
     case screen
@@ -127,14 +128,91 @@ extension TranslationLanguage {
     }
 }
 
+enum SubtitleFontName: String, CaseIterable, Codable, Identifiable {
+    case system = "System"
+    case helveticaNeue = "Helvetica Neue"
+    case avenir = "Avenir"
+    case georgia = "Georgia"
+    case futura = "Futura"
+    case palatino = "Palatino"
+    case menlo = "Menlo"
+    case courierNew = "Courier New"
+    case timesNewRoman = "Times New Roman"
+    case arial = "Arial"
+
+    var id: String { rawValue }
+    var displayName: String { rawValue }
+
+    func nsFont(size: CGFloat, bold: Bool, italic: Bool) -> NSFont {
+        if self == .system {
+            let weight: NSFont.Weight = bold ? .bold : .regular
+            let base = NSFont.systemFont(ofSize: size, weight: weight)
+            if italic {
+                return NSFontManager.shared.convert(base, toHaveTrait: .italicFontMask)
+            }
+            return base
+        }
+
+        var traits: NSFontTraitMask = []
+        if bold { traits.insert(.boldFontMask) }
+        if italic { traits.insert(.italicFontMask) }
+
+        if let font = NSFontManager.shared.font(withFamily: rawValue, traits: traits, weight: bold ? 9 : 5, size: size) {
+            return font
+        }
+        return NSFont.systemFont(ofSize: size, weight: bold ? .bold : .regular)
+    }
+}
+
+struct SubtitleColor: Codable, Equatable {
+    var red: Double
+    var green: Double
+    var blue: Double
+    var alpha: Double
+
+    static let white = SubtitleColor(red: 1, green: 1, blue: 1, alpha: 1)
+    static let yellow = SubtitleColor(red: 1, green: 1, blue: 0, alpha: 1)
+    static let cyan = SubtitleColor(red: 0, green: 1, blue: 1, alpha: 1)
+    static let green = SubtitleColor(red: 0.2, green: 1, blue: 0.4, alpha: 1)
+    static let orange = SubtitleColor(red: 1, green: 0.6, blue: 0, alpha: 1)
+    static let pink = SubtitleColor(red: 1, green: 0.4, blue: 0.7, alpha: 1)
+
+    var nsColor: NSColor {
+        NSColor(red: red, green: green, blue: blue, alpha: alpha)
+    }
+
+    var swiftUIColor: Color {
+        Color(red: red, green: green, blue: blue, opacity: alpha)
+    }
+
+    static let presets: [(name: String, color: SubtitleColor)] = [
+        ("White", .white),
+        ("Yellow", .yellow),
+        ("Cyan", .cyan),
+        ("Green", .green),
+        ("Orange", .orange),
+        ("Pink", .pink),
+    ]
+}
+
+import SwiftUI
+
 struct AppSettings: Codable, Equatable {
     var apiKey = ""
     var targetLanguageCode = "vi"
     var userPrompt = "Translate the incoming speech naturally. Keep names, code terms, and product names intact."
-    var audioSource: AudioSource = .microphone
+    var audioSource: AudioSource = .screen
     var backgroundOpacity = 0.68
     var echoTargetLanguage = true
     var subtitleScreenFrame: SubtitleScreenFrame?
+
+    // Subtitle styling
+    var subtitleFontSize: Double = 28
+    var subtitleFontName: SubtitleFontName = .system
+    var subtitleIsBold: Bool = true
+    var subtitleIsItalic: Bool = false
+    var subtitleIsUnderline: Bool = false
+    var subtitleColor: SubtitleColor = .white
 
     func requiresSessionRestart(comparedTo other: AppSettings) -> Bool {
         apiKey != other.apiKey

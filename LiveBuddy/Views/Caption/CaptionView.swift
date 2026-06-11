@@ -55,7 +55,8 @@ struct CaptionView: View {
             .shadow(color: .black.opacity(0.3), radius: 12, x: 0, y: 6)
 
             CaptionScrollTextView(
-                text: transcript
+                text: transcript,
+                settings: appState.settings
             )
             .padding(.horizontal, 18)
             .padding(.top, 38)
@@ -167,6 +168,7 @@ struct CaptionView: View {
 
 struct CaptionScrollTextView: NSViewRepresentable {
     let text: String
+    let settings: AppSettings
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -196,7 +198,10 @@ struct CaptionScrollTextView: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
 
-        if context.coordinator.lastText != text {
+        let needsUpdate = context.coordinator.lastText != text
+            || context.coordinator.lastSettings != settings
+
+        if needsUpdate {
             let isNearBottom = isNearBottom(scrollView)
 
             if let textStorage = textView.textStorage {
@@ -206,6 +211,7 @@ struct CaptionScrollTextView: NSViewRepresentable {
             }
 
             context.coordinator.lastText = text
+            context.coordinator.lastSettings = settings
 
             if isNearBottom || text.isEmpty {
                 DispatchQueue.main.async {
@@ -223,14 +229,24 @@ struct CaptionScrollTextView: NSViewRepresentable {
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = 4
         paragraph.alignment = .left
-        return NSAttributedString(
-            string: value,
-            attributes: [
-                .font: NSFont.systemFont(ofSize: 28, weight: .semibold),
-                .foregroundColor: NSColor.white,
-                .paragraphStyle: paragraph
-            ]
+
+        let font = settings.subtitleFontName.nsFont(
+            size: CGFloat(settings.subtitleFontSize),
+            bold: settings.subtitleIsBold,
+            italic: settings.subtitleIsItalic
         )
+
+        var attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: settings.subtitleColor.nsColor,
+            .paragraphStyle: paragraph
+        ]
+
+        if settings.subtitleIsUnderline {
+            attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
+        }
+
+        return NSAttributedString(string: value, attributes: attributes)
     }
 
     private func scrollSmoothlyToBottom(in scrollView: NSScrollView) {
@@ -258,5 +274,6 @@ struct CaptionScrollTextView: NSViewRepresentable {
 
     final class Coordinator {
         var lastText = ""
+        var lastSettings: AppSettings?
     }
 }

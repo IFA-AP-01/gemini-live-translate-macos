@@ -60,6 +60,79 @@ struct SettingsView: View {
                         .frame(width: 42, alignment: .trailing)
                 }
             }
+
+            Section("Subtitle Style") {
+                HStack {
+                    Text("Font size")
+                    Slider(value: appState.binding(\.subtitleFontSize), in: 14...60, step: 1)
+                    Text("\(Int(appState.settings.subtitleFontSize)) pt")
+                        .monospacedDigit()
+                        .frame(width: 48, alignment: .trailing)
+                }
+
+                Picker("Font", selection: appState.binding(\.subtitleFontName)) {
+                    ForEach(SubtitleFontName.allCases) { font in
+                        Text(font.displayName).tag(font)
+                    }
+                }
+
+                HStack(spacing: 12) {
+                    Text("Style")
+                    Spacer()
+                    Toggle(isOn: appState.binding(\.subtitleIsBold)) {
+                        Text("B").font(.system(size: 14, weight: .bold))
+                    }
+                    .toggleStyle(.button)
+                    .help("Bold")
+
+                    Toggle(isOn: appState.binding(\.subtitleIsItalic)) {
+                        Text("I").font(.system(size: 14, weight: .regular).italic())
+                    }
+                    .toggleStyle(.button)
+                    .help("Italic")
+
+                    Toggle(isOn: appState.binding(\.subtitleIsUnderline)) {
+                        Text("U").font(.system(size: 14, weight: .regular)).underline()
+                    }
+                    .toggleStyle(.button)
+                    .help("Underline")
+                }
+
+                HStack(spacing: 8) {
+                    Text("Color")
+                    Spacer()
+                    ForEach(SubtitleColor.presets, id: \.name) { preset in
+                        Button {
+                            appState.updateSetting(\.subtitleColor, to: preset.color)
+                        } label: {
+                            Circle()
+                                .fill(preset.color.swiftUIColor)
+                                .frame(width: 20, height: 20)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.primary, lineWidth: appState.settings.subtitleColor == preset.color ? 2 : 0)
+                                        .frame(width: 24, height: 24)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .help(preset.name)
+                    }
+                }
+
+                // Live preview
+                Text("Preview text")
+                    .font(.system(size: CGFloat(appState.settings.subtitleFontSize)))
+                    .bold(appState.settings.subtitleIsBold)
+                    .italic(appState.settings.subtitleIsItalic)
+                    .underline(appState.settings.subtitleIsUnderline)
+                    .foregroundStyle(appState.settings.subtitleColor.swiftUIColor)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(.black.opacity(0.6))
+                    )
+            }
         }
         .formStyle(.grouped)
     }
