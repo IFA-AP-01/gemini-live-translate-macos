@@ -1,32 +1,60 @@
-//
-//  LiveBuddyApp.swift
-//  LiveBuddy
-//
-//  Created by Huy Huỳnh on 11/6/26.
-//
-
 import SwiftUI
-import SwiftData
 
 @main
 struct LiveBuddyApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    @StateObject private var appState = AppState()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        WindowGroup("Settings", id: "settings") {
+            SettingsView()
+                .environmentObject(appState)
+                .frame(minWidth: 560, minHeight: 520)
+                .onAppear {
+                    appDelegate.configure(with: appState)
+                }
         }
-        .modelContainer(sharedModelContainer)
+        .windowResizability(.contentSize)
+
+        MenuBarExtra("LiveBuddy", systemImage: appState.isRunning ? "captions.bubble.fill" : "captions.bubble") {
+            MenuBarView()
+                .environmentObject(appState)
+        }
     }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var captionPanel: CaptionPanelController?
+    private weak var appState: AppState?
+    private var showCaptionObserver: NSObjectProtocol?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+    }
+
+    func configure(with appState: AppState) {
+        guard self.appState !== appState else { return }
+        self.appState = appState
+        let panel = CaptionPanelController(appState: appState)
+        captionPanel = panel
+        panel.show()
+        showCaptionObserver = NotificationCenter.default.addObserver(
+            forName: .showCaptionWindow,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.captionPanel?.show()
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        Task { await appState?.stop() }
+        if let showCaptionObserver {
+            NotificationCenter.default.removeObserver(showCaptionObserver)
+        }
+    }
+}
+
+extension Notification.Name {
+    static let showCaptionWindow = Notification.Name("LiveBuddyShowCaptionWindow")
 }

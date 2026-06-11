@@ -1,0 +1,153 @@
+import Foundation
+
+enum AudioSource: String, CaseIterable, Codable, Identifiable {
+    case screen
+    case microphone
+    case both
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .screen: "Screen audio"
+        case .microphone: "Microphone"
+        case .both: "Screen + Mic"
+        }
+    }
+}
+
+struct TranslationLanguage: Identifiable, Hashable {
+    let id: String
+    let name: String
+}
+
+extension TranslationLanguage {
+    static let all: [TranslationLanguage] = [
+        .init(id: "af", name: "Afrikaans"),
+        .init(id: "sq", name: "Albanian"),
+        .init(id: "am", name: "Amharic"),
+        .init(id: "ar", name: "Arabic"),
+        .init(id: "hy", name: "Armenian"),
+        .init(id: "az", name: "Azerbaijani"),
+        .init(id: "eu", name: "Basque"),
+        .init(id: "be", name: "Belarusian"),
+        .init(id: "bn", name: "Bengali"),
+        .init(id: "bs", name: "Bosnian"),
+        .init(id: "bg", name: "Bulgarian"),
+        .init(id: "ca", name: "Catalan"),
+        .init(id: "ceb", name: "Cebuano"),
+        .init(id: "zh", name: "Chinese"),
+        .init(id: "hr", name: "Croatian"),
+        .init(id: "cs", name: "Czech"),
+        .init(id: "da", name: "Danish"),
+        .init(id: "nl", name: "Dutch"),
+        .init(id: "en", name: "English"),
+        .init(id: "eo", name: "Esperanto"),
+        .init(id: "et", name: "Estonian"),
+        .init(id: "fi", name: "Finnish"),
+        .init(id: "fr", name: "French"),
+        .init(id: "gl", name: "Galician"),
+        .init(id: "ka", name: "Georgian"),
+        .init(id: "de", name: "German"),
+        .init(id: "el", name: "Greek"),
+        .init(id: "gu", name: "Gujarati"),
+        .init(id: "ht", name: "Haitian Creole"),
+        .init(id: "ha", name: "Hausa"),
+        .init(id: "he", name: "Hebrew"),
+        .init(id: "hi", name: "Hindi"),
+        .init(id: "hmn", name: "Hmong"),
+        .init(id: "hu", name: "Hungarian"),
+        .init(id: "is", name: "Icelandic"),
+        .init(id: "ig", name: "Igbo"),
+        .init(id: "id", name: "Indonesian"),
+        .init(id: "ga", name: "Irish"),
+        .init(id: "it", name: "Italian"),
+        .init(id: "ja", name: "Japanese"),
+        .init(id: "jv", name: "Javanese"),
+        .init(id: "kn", name: "Kannada"),
+        .init(id: "kk", name: "Kazakh"),
+        .init(id: "km", name: "Khmer"),
+        .init(id: "ko", name: "Korean"),
+        .init(id: "ku", name: "Kurdish"),
+        .init(id: "ky", name: "Kyrgyz"),
+        .init(id: "lo", name: "Lao"),
+        .init(id: "la", name: "Latin"),
+        .init(id: "lv", name: "Latvian"),
+        .init(id: "lt", name: "Lithuanian"),
+        .init(id: "mk", name: "Macedonian"),
+        .init(id: "mg", name: "Malagasy"),
+        .init(id: "ms", name: "Malay"),
+        .init(id: "ml", name: "Malayalam"),
+        .init(id: "mt", name: "Maltese"),
+        .init(id: "mi", name: "Maori"),
+        .init(id: "mr", name: "Marathi"),
+        .init(id: "mn", name: "Mongolian"),
+        .init(id: "my", name: "Myanmar"),
+        .init(id: "ne", name: "Nepali"),
+        .init(id: "no", name: "Norwegian"),
+        .init(id: "ps", name: "Pashto"),
+        .init(id: "fa", name: "Persian"),
+        .init(id: "pl", name: "Polish"),
+        .init(id: "pt", name: "Portuguese"),
+        .init(id: "pa", name: "Punjabi"),
+        .init(id: "ro", name: "Romanian"),
+        .init(id: "ru", name: "Russian"),
+        .init(id: "sm", name: "Samoan"),
+        .init(id: "sr", name: "Serbian"),
+        .init(id: "st", name: "Sesotho"),
+        .init(id: "sn", name: "Shona"),
+        .init(id: "sd", name: "Sindhi"),
+        .init(id: "si", name: "Sinhala"),
+        .init(id: "sk", name: "Slovak"),
+        .init(id: "sl", name: "Slovenian"),
+        .init(id: "so", name: "Somali"),
+        .init(id: "es", name: "Spanish"),
+        .init(id: "su", name: "Sundanese"),
+        .init(id: "sw", name: "Swahili"),
+        .init(id: "sv", name: "Swedish"),
+        .init(id: "tl", name: "Tagalog"),
+        .init(id: "tg", name: "Tajik"),
+        .init(id: "ta", name: "Tamil"),
+        .init(id: "te", name: "Telugu"),
+        .init(id: "th", name: "Thai"),
+        .init(id: "tr", name: "Turkish"),
+        .init(id: "uk", name: "Ukrainian"),
+        .init(id: "ur", name: "Urdu"),
+        .init(id: "uz", name: "Uzbek"),
+        .init(id: "vi", name: "Vietnamese"),
+        .init(id: "cy", name: "Welsh"),
+        .init(id: "xh", name: "Xhosa"),
+        .init(id: "yi", name: "Yiddish"),
+        .init(id: "yo", name: "Yoruba"),
+        .init(id: "zu", name: "Zulu")
+    ]
+
+    static func name(for code: String) -> String {
+        all.first { $0.id == code }?.name ?? code
+    }
+}
+
+struct AppSettings: Codable, Equatable {
+    var apiKey = ""
+    var targetLanguageCode = "vi"
+    var userPrompt = "Translate the incoming speech naturally. Keep names, code terms, and product names intact."
+    var audioSource: AudioSource = .microphone
+    var backgroundOpacity = 0.68
+    var echoTargetLanguage = true
+    var subtitleScreenFrame: SubtitleScreenFrame?
+
+    func requiresSessionRestart(comparedTo other: AppSettings) -> Bool {
+        apiKey != other.apiKey
+            || targetLanguageCode != other.targetLanguageCode
+            || userPrompt != other.userPrompt
+            || audioSource != other.audioSource
+            || echoTargetLanguage != other.echoTargetLanguage
+    }
+}
+
+struct SubtitleScreenFrame: Codable, Equatable {
+    var x: Double
+    var y: Double
+    var width: Double
+    var height: Double
+}
