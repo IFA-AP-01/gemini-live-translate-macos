@@ -176,6 +176,77 @@ final class AppState: ObservableObject {
         NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 
+    func verifyGeminiToken() async throws {
+        let key = settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else {
+            throw NSError(domain: "LiveBuddy", code: 400, userInfo: [NSLocalizedDescriptionKey: "API Key cannot be empty"])
+        }
+
+        let modelsToTry = ["gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-1.5-flash"]
+        var lastError: Error?
+        
+        for model in modelsToTry {
+            do {
+                try await pingGeminiModel(model, withKey: key)
+                return // Success!
+            } catch {
+                lastError = error
+                let nsErr = error as NSError
+                if nsErr.domain == "LiveBuddy" && (nsErr.code == 400 || nsErr.code == 403) {
+                    let errMsg = nsErr.localizedDescription
+                    if errMsg.contains("API key not valid") || errMsg.contains("API_KEY_INVALID") {
+                        throw error
+                    }
+                }
+            }
+        }
+        
+        if let lastError = lastError {
+            throw lastError
+        } else {
+            throw NSError(domain: "LiveBuddy", code: 500, userInfo: [NSLocalizedDescriptionKey: "Verification failed"])
+        }
+    }
+    
+    private func pingGeminiModel(_ modelName: String, withKey key: String) async throws {
+        guard let escapedKey = key.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelName):generateContent?key=\(escapedKey)") else {
+            throw NSError(domain: "LiveBuddy", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid API key format"])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+            "contents": [
+                [
+                    "parts": [
+                        ["text": "ping"]
+                    ]
+                ]
+            ]
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "LiveBuddy", code: 500, userInfo: [NSLocalizedDescriptionKey: "Invalid server response"])
+        }
+        
+        if httpResponse.statusCode != 200 {
+            if let errorObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let error = errorObj["error"] as? [String: Any],
+               let message = error["message"] as? String {
+                throw NSError(domain: "LiveBuddy", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: message])
+            }
+            throw NSError(domain: "LiveBuddy", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP Error \(httpResponse.statusCode)"])
+        }
+    }
+
+
     private func startCapture() async throws {
         if settings.audioSource == .microphone || settings.audioSource == .both {
             let mic = MicrophoneCapture(onAudioChunk: audioSink(source: .microphone))

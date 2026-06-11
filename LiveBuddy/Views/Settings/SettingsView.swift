@@ -11,6 +11,9 @@ struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @State private var selectedItem: NavigationItem? = .caption
     @State private var selectedTranscript: TranscriptSession?
+    @State private var isCheckingToken = false
+    @State private var isTokenValid: Bool? = nil
+    @State private var tokenCheckError: String? = nil
 
     var body: some View {
         NavigationSplitView {
@@ -113,14 +116,59 @@ struct SettingsView: View {
                 .pickerStyle(.menu)
             }
             
-            Section("Google Gemini") {
-                SecureField("API key", text: appState.binding(\.apiKey))
+            if appState.settings.activeProvider == .gemini {
+                Section("Google Gemini") {
+                    HStack(spacing: 8) {
+                        SecureField("API key", text: appState.binding(\.apiKey))
+                        
+                        if isCheckingToken {
+                            ProgressView()
+                                .controlSize(.small)
+                                .frame(width: 16, height: 16)
+                        } else if let isValid = isTokenValid {
+                            Image(systemName: isValid ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                                .foregroundColor(isValid ? .green : .red)
+                                .imageScale(.medium)
+                                .help(tokenCheckError ?? (isValid ? "Token is valid" : "Verification failed"))
+                        }
+                        
+                        Button("Check") {
+                            Task {
+                                isCheckingToken = true
+                                isTokenValid = nil
+                                tokenCheckError = nil
+                                do {
+                                    try await appState.verifyGeminiToken()
+                                    isTokenValid = true
+                                } catch {
+                                    isTokenValid = false
+                                    tokenCheckError = error.localizedDescription
+                                }
+                                isCheckingToken = false
+                            }
+                        }
+                        .disabled(appState.settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCheckingToken)
+                    }
+                    
+                    if let error = tokenCheckError, !error.isEmpty {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+            }
+            
+            Section("Translation Prompt") {
                 TextEditor(text: appState.binding(\.userPrompt))
                     .font(.body)
                     .frame(minHeight: 92)
             }
         }
         .formStyle(.grouped)
+        .onChange(of: appState.settings.apiKey) { _, _ in
+            isTokenValid = nil
+            tokenCheckError = nil
+        }
     }
 
     private var captionForm: some View {
