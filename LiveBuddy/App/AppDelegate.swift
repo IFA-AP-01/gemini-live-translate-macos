@@ -1,5 +1,6 @@
 import AppKit
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var captionPanel: CaptionPanelController?
     private weak var appState: AppState?
@@ -14,13 +15,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.appState = appState
         let panel = CaptionPanelController(appState: appState)
         captionPanel = panel
-        panel.show()
+        if appState.isProviderConfigured {
+            panel.show()
+        } else {
+            appState.openSettingsWindow()
+            appState.showSetupSheet = true
+        }
         showCaptionObserver = NotificationCenter.default.addObserver(
             forName: .showCaptionWindow,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.captionPanel?.show()
+            Task { @MainActor [weak self] in
+                if self?.appState?.isProviderConfigured == true {
+                    self?.captionPanel?.show()
+                } else {
+                    self?.appState?.openSettingsWindow()
+                    self?.appState?.showSetupSheet = true
+                }
+            }
         }
     }
 

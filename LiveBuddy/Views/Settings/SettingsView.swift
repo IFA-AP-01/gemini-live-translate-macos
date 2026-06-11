@@ -1,14 +1,15 @@
 import SwiftUI
 
 enum NavigationItem: Hashable {
-    case settings
+    case provider
+    case caption
     case transcripts
     case logs
 }
 
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
-    @State private var selectedItem: NavigationItem? = .settings
+    @State private var selectedItem: NavigationItem? = .caption
     @State private var selectedTranscript: TranscriptSession?
 
     var body: some View {
@@ -33,24 +34,33 @@ struct SettingsView: View {
                 .padding(.vertical, 12)
                 .padding(.horizontal, 4)
                 
-                NavigationLink(value: NavigationItem.settings) {
-                    Label("Settings", systemImage: "gearshape")
+                Section("Settings") {
+                    NavigationLink(value: NavigationItem.caption) {
+                        Label("Caption", systemImage: "captions.bubble")
+                    }
+                    NavigationLink(value: NavigationItem.provider) {
+                        Label("API Provider", systemImage: "network")
+                    }
                 }
                 
-                NavigationLink(value: NavigationItem.transcripts) {
-                    Label("Transcripts", systemImage: "text.bubble")
-                }
-                
-                NavigationLink(value: NavigationItem.logs) {
-                    Label("Logs", systemImage: "list.bullet.rectangle")
+                Section("History & Data") {
+                    NavigationLink(value: NavigationItem.transcripts) {
+                        Label("Transcripts", systemImage: "text.bubble")
+                    }
+                    
+                    NavigationLink(value: NavigationItem.logs) {
+                        Label("Logs", systemImage: "list.bullet.rectangle")
+                    }
                 }
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
         } detail: {
             Group {
                 switch selectedItem {
-                case .settings, .none:
-                    settingsForm
+                case .provider, .none:
+                    providerForm
+                case .caption:
+                    captionForm
                 case .transcripts:
                     TranscriptsView(selectedSession: $selectedTranscript)
                 case .logs:
@@ -60,6 +70,19 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(nsColor: .windowBackgroundColor))
             .toolbar {
+                if selectedItem == .transcripts && selectedTranscript != nil {
+                    ToolbarItem(placement: .navigation) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedTranscript = nil
+                            }
+                        } label: {
+                            Image(systemName: "chevron.left")
+                        }
+                        .help("Back to transcripts list")
+                    }
+                }
+                
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         appState.toggle()
@@ -74,30 +97,48 @@ struct SettingsView: View {
                 }
             }
         }
+        .sheet(isPresented: $appState.showSetupSheet) {
+            ProviderSetupSheet()
+        }
     }
 
-    private var settingsForm: some View {
+    private var providerForm: some View {
         Form {
-            Section("Gemini") {
+            Section("Active Provider") {
+                Picker("Provider", selection: appState.binding(\.activeProvider)) {
+                    ForEach(AIProvider.allCases) { provider in
+                        Text(provider.title).tag(provider)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+            
+            Section("Google Gemini") {
                 SecureField("API key", text: appState.binding(\.apiKey))
+                TextEditor(text: appState.binding(\.userPrompt))
+                    .font(.body)
+                    .frame(minHeight: 92)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var captionForm: some View {
+        Form {
+            Section("Translation & Audio") {
+                Picker("Audio Source", selection: appState.binding(\.audioSource)) {
+                    ForEach(AudioSource.allCases) { source in
+                        Text(source.title).tag(source)
+                    }
+                }
+                .pickerStyle(.segmented)
+                
                 Picker("Translate to", selection: appState.binding(\.targetLanguageCode)) {
                     ForEach(TranslationLanguage.all) { language in
                         Text("\(language.name) (\(language.id))").tag(language.id)
                     }
                 }
                 Toggle("Echo target language", isOn: appState.binding(\.echoTargetLanguage))
-                TextEditor(text: appState.binding(\.userPrompt))
-                    .font(.body)
-                    .frame(minHeight: 92)
-            }
-
-            Section("Audio") {
-                Picker("Source", selection: appState.binding(\.audioSource)) {
-                    ForEach(AudioSource.allCases) { source in
-                        Text(source.title).tag(source)
-                    }
-                }
-                .pickerStyle(.segmented)
             }
 
             Section("Caption Window") {
@@ -242,6 +283,62 @@ struct LogRow: View {
                     .foregroundStyle(entry.level == .error ? .red : .primary)
             }
         }
+    }
+}
+
+struct ProviderSetupSheet: View {
+    @EnvironmentObject private var appState: AppState
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "captions.bubble.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(.tint)
+            
+            Text("Welcome to LiveBuddy")
+                .font(.title2)
+                .bold()
+            
+            Text("Please configure your AI Provider to start using LiveBuddy for real-time translation.")
+                .font(.body)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            
+            Form {
+                Picker("Provider", selection: appState.binding(\.activeProvider)) {
+                    ForEach(AIProvider.allCases) { provider in
+                        Text(provider.title).tag(provider)
+                    }
+                }
+                .pickerStyle(.menu)
+                
+                SecureField("API Key", text: appState.binding(\.apiKey))
+            }
+            .formStyle(.grouped)
+            .frame(height: 120)
+            
+            HStack {
+                Button("Cancel") {
+                    appState.showSetupSheet = false
+                }
+                .keyboardShortcut(.cancelAction)
+                
+                Spacer()
+                
+                Button("Get Started") {
+                    appState.showSetupSheet = false
+                    if appState.isProviderConfigured {
+                        NotificationCenter.default.post(name: .showCaptionWindow, object: nil)
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!appState.isProviderConfigured)
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(.top, 10)
+        }
+        .padding(30)
+        .frame(width: 450)
     }
 }
 

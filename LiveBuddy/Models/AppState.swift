@@ -16,8 +16,13 @@ final class AppState: ObservableObject {
     @Published private(set) var isRunning = false
     @Published private(set) var statusMessage = "Ready"
     @Published private(set) var statusLevel: LiveStatusLevel = .stopped
-    @Published private(set) var logs: [LogEntry] = []
     @Published private(set) var transcriptSessions: [TranscriptSession] = []
+    @Published private(set) var logs: [LogEntry] = []
+    @Published var showSetupSheet = false
+
+    var isProviderConfigured: Bool {
+        !settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     private let settingsURL: URL
     private let transcriptsURL: URL
@@ -48,12 +53,15 @@ final class AppState: ObservableObject {
     }
 
     func start() async {
-        NotificationCenter.default.post(name: .showCaptionWindow, object: nil)
-        guard !isRunning else { return }
-        guard !settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            updateStatus("Add Gemini API key in Settings", level: .error, log: true)
+        guard isProviderConfigured else {
+            updateStatus("Add API key in Settings", level: .error, log: true)
+            openSettingsWindow()
+            showSetupSheet = true
             return
         }
+        
+        NotificationCenter.default.post(name: .showCaptionWindow, object: nil)
+        guard !isRunning else { return }
 
         captions.removeAll()
         captionDraft = ""

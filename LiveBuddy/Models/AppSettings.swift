@@ -17,6 +17,17 @@ enum AudioSource: String, CaseIterable, Codable, Identifiable {
     }
 }
 
+enum AIProvider: String, CaseIterable, Codable, Identifiable {
+    case gemini
+    
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .gemini: return "Google Gemini"
+        }
+    }
+}
+
 struct TranslationLanguage: Identifiable, Hashable {
     let id: String
     let name: String
@@ -198,6 +209,7 @@ struct SubtitleColor: Codable, Equatable {
 import SwiftUI
 
 struct AppSettings: Codable, Equatable {
+    var activeProvider: AIProvider = .gemini
     var apiKey = ""
     var targetLanguageCode = "vi"
     var userPrompt = "Translate the incoming speech naturally. Keep names, code terms, and product names intact."
@@ -215,7 +227,8 @@ struct AppSettings: Codable, Equatable {
     var subtitleColor: SubtitleColor = .white
 
     func requiresSessionRestart(comparedTo other: AppSettings) -> Bool {
-        apiKey != other.apiKey
+        activeProvider != other.activeProvider
+            || apiKey != other.apiKey
             || targetLanguageCode != other.targetLanguageCode
             || userPrompt != other.userPrompt
             || audioSource != other.audioSource
