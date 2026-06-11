@@ -77,14 +77,16 @@ final class AudioDeviceManager {
             
             var name: CFString = "" as CFString
             var nameSize = UInt32(MemoryLayout<CFString>.size)
-            status = AudioObjectGetPropertyData(
-                deviceID,
-                &nameAddress,
-                0,
-                nil,
-                &nameSize,
-                &name
-            )
+            status = withUnsafeMutablePointer(to: &name) {
+                AudioObjectGetPropertyData(
+                    deviceID,
+                    &nameAddress,
+                    0,
+                    nil,
+                    &nameSize,
+                    $0
+                )
+            }
             
             let deviceName = (status == noErr) ? (name as String) : "Unknown Device"
             
@@ -96,14 +98,16 @@ final class AudioDeviceManager {
             )
             var uid: CFString = "" as CFString
             var uidSize = UInt32(MemoryLayout<CFString>.size)
-            status = AudioObjectGetPropertyData(
-                deviceID,
-                &uidAddress,
-                0,
-                nil,
-                &uidSize,
-                &uid
-            )
+            status = withUnsafeMutablePointer(to: &uid) {
+                AudioObjectGetPropertyData(
+                    deviceID,
+                    &uidAddress,
+                    0,
+                    nil,
+                    &uidSize,
+                    $0
+                )
+            }
             
             let deviceUID = (status == noErr) ? (uid as String) : ""
             

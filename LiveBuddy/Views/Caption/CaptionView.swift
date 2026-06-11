@@ -70,7 +70,7 @@ struct CaptionView: View {
         .onAppear {
             isPlaying = appState.isRunning
         }
-        .onChange(of: appState.isRunning) { newValue in
+        .onChange(of: appState.isRunning) { _, newValue in
             isPlaying = newValue
         }
     }

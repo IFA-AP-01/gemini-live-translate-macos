@@ -212,7 +212,7 @@ struct AppSettings: Codable, Equatable {
     var activeProvider: AIProvider = .gemini
     var apiKey = ""
     var targetLanguageCode: String = {
-        let code = Locale.current.languageCode ?? "vi"
+        let code = Locale.current.language.languageCode?.identifier ?? "vi"
         return TranslationLanguage.all.contains(where: { $0.id == code }) ? code : "vi"
     }()
     var userPrompt = "Translate the incoming speech naturally. Keep names, code terms, and product names intact."

@@ -337,7 +337,7 @@ final class AppState: ObservableObject {
     private func appendOriginalText(_ text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        var pending = originalDraft + (originalDraft.isEmpty ? "" : " ") + trimmed
+        let pending = originalDraft + (originalDraft.isEmpty ? "" : " ") + trimmed
         let sentences = completedSentences(from: pending)
         for sentence in sentences.completed {
             completedOriginalSentences.append(sentence)
