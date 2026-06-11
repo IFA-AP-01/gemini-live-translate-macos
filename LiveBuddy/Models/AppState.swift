@@ -242,19 +242,36 @@ final class AppState: ObservableObject {
         while index < text.endIndex {
             let scalar = text[index].unicodeScalars.first
             if let scalar, terminators.contains(scalar) {
-                let end = text.index(after: index)
-                let sentence = text[start..<end]
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                if !sentence.isEmpty {
-                    completed.append(sentence)
+                var end = text.index(after: index)
+                
+                while end < text.endIndex,
+                    let nextScalar = text[end].unicodeScalars.first,
+                    terminators.contains(nextScalar) {
+                    end = text.index(after: end)
                 }
-                start = end
+                
+                var isEndOfSentence = false
+                if end == text.endIndex {
+                    isEndOfSentence = true
+                } else if let nextScalar = text[end].unicodeScalars.first,
+                        CharacterSet.whitespacesAndNewlines.contains(nextScalar) {
+                    isEndOfSentence = true
+                }
+                
+                if isEndOfSentence {
+                    let sentence = String(text[start..<end]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !sentence.isEmpty {
+                        completed.append(sentence)
+                    }
+                    start = end
+                }
+                index = end
+            } else {
+                index = text.index(after: index)
             }
-            index = text.index(after: index)
         }
 
-        let remainder = text[start...]
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let remainder = String(text[start...]).trimmingCharacters(in: .whitespacesAndNewlines)
         return (completed, remainder)
     }
 

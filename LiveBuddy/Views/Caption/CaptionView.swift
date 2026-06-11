@@ -103,7 +103,7 @@ struct CaptionScrollTextView: NSViewRepresentable {
         scrollView.drawsBackground = false
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
-        scrollView.autohidesScrollers = false
+        scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
         scrollView.scrollerStyle = .overlay
         scrollView.verticalScroller?.controlSize = .small
@@ -114,11 +114,10 @@ struct CaptionScrollTextView: NSViewRepresentable {
         textView.isSelectable = false
         textView.textContainerInset = NSSize(width: 0, height: 8)
         textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.lineFragmentPadding = 0
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
-        textView.textStorage?.setAttributedString(attributedText(""))
+        textView.layoutManager?.allowsNonContiguousLayout = false
 
         scrollView.documentView = textView
         return scrollView
@@ -126,19 +125,22 @@ struct CaptionScrollTextView: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
-        let targetWidth = max(1, scrollView.contentSize.width)
-        if abs(textView.frame.width - targetWidth) > 0.5 {
-            textView.frame.size.width = targetWidth
-            updateDocumentSize(textView, in: scrollView)
-        }
 
         if context.coordinator.lastText != text {
-            let shouldFollowBottom = context.coordinator.lastText.isEmpty || isNearBottom(scrollView)
+            let isNearBottom = isNearBottom(scrollView)
+
+            if let textStorage = textView.textStorage {
+                textStorage.beginEditing()
+                textStorage.setAttributedString(attributedText(text))
+                textStorage.endEditing()
+            }
+
             context.coordinator.lastText = text
-            textView.textStorage?.setAttributedString(attributedText(text))
-            updateDocumentSize(textView, in: scrollView)
-            if shouldFollowBottom {
-                scroll(to: 1, in: scrollView, animated: text.containsTerminator)
+
+            if isNearBottom || text.isEmpty {
+                DispatchQueue.main.async {
+                    scrollSmoothlyToBottom(in: scrollView)
+                }
             }
         }
     }
@@ -161,19 +163,18 @@ struct CaptionScrollTextView: NSViewRepresentable {
         )
     }
 
-    private func scroll(to position: Double, in scrollView: NSScrollView, animated: Bool) {
+    private func scrollSmoothlyToBottom(in scrollView: NSScrollView) {
         guard let documentView = scrollView.documentView else { return }
-        let maxY = max(0, documentView.bounds.height - scrollView.contentSize.height)
-        let y = max(0, min(1, position)) * maxY
-        let origin = NSPoint(x: 0, y: y)
-        if animated {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.22
-                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                scrollView.contentView.animator().setBoundsOrigin(origin)
-            }
-        } else {
-            scrollView.contentView.setBoundsOrigin(origin)
+
+        let documentHeight = documentView.bounds.height
+        let clipHeight = scrollView.contentView.bounds.height
+        let maxY = max(0, documentHeight - clipHeight)
+        let targetPoint = NSPoint(x: 0, y: maxY)
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.25
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            scrollView.contentView.animator().setBoundsOrigin(targetPoint)
         }
         scrollView.reflectScrolledClipView(scrollView.contentView)
     }
@@ -181,29 +182,11 @@ struct CaptionScrollTextView: NSViewRepresentable {
     private func isNearBottom(_ scrollView: NSScrollView) -> Bool {
         guard let documentView = scrollView.documentView else { return true }
         let maxY = max(0, documentView.bounds.height - scrollView.contentSize.height)
-        return maxY - scrollView.contentView.bounds.origin.y < 24
-    }
-
-    private func updateDocumentSize(_ textView: NSTextView, in scrollView: NSScrollView) {
-        guard let textContainer = textView.textContainer,
-              let layoutManager = textView.layoutManager else { return }
-        textContainer.containerSize = NSSize(width: max(1, scrollView.contentSize.width), height: .greatestFiniteMagnitude)
-        layoutManager.ensureLayout(for: textContainer)
-        let usedRect = layoutManager.usedRect(for: textContainer)
-        let height = ceil(usedRect.height + textView.textContainerInset.height * 2 + 16)
-        textView.frame.size = NSSize(
-            width: max(1, scrollView.contentSize.width),
-            height: max(scrollView.contentSize.height, height)
-        )
+        let currentY = scrollView.contentView.bounds.origin.y
+        return maxY - currentY < 50
     }
 
     final class Coordinator {
         var lastText = ""
-    }
-}
-
-private extension String {
-    var containsTerminator: Bool {
-        rangeOfCharacter(from: CharacterSet(charactersIn: ".?!。？！")) != nil
     }
 }
