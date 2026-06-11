@@ -58,9 +58,9 @@ struct CaptionView: View {
                 text: transcript,
                 settings: appState.settings
             )
-            .padding(.horizontal, 18)
-            .padding(.top, 38)
-            .padding(.bottom, 14)
+            .padding(.horizontal, 12)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
 
             Color.clear
                 .frame(height: 1)
@@ -70,17 +70,26 @@ struct CaptionView: View {
             topControls
                 .padding(.leading, 10)
                 .padding(.top, 8)
+                .opacity(isHovered ? 1 : 0)
+                .animation(.easeInOut(duration: 0.2), value: isHovered)
         }
         .overlay(alignment: .topTrailing) {
             closeButton
                 .padding(.trailing, 9)
                 .padding(.top, 8)
+                .opacity(isHovered ? 1 : 0)
+                .animation(.easeInOut(duration: 0.2), value: isHovered)
         }
         .overlay {
             SubtitleResizeOverlay()
         }
         .padding(1)
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
+
+    @State private var isHovered = false
 
     private var topControls: some View {
         HStack(spacing: 9) {
