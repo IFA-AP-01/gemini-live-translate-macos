@@ -1,6 +1,26 @@
 import SwiftUI
 import AppKit
 
+struct VisualEffectView: NSViewRepresentable {
+    var material: NSVisualEffectView.Material
+    var blendingMode: NSVisualEffectView.BlendingMode
+    var state: NSVisualEffectView.State
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = state
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
+        nsView.state = state
+    }
+}
+
 struct CaptionView: View {
     @EnvironmentObject private var appState: AppState
     let onClose: () -> Void
@@ -11,8 +31,28 @@ struct CaptionView: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.black.opacity(appState.settings.backgroundOpacity))
+            VisualEffectView(
+                material: .hudWindow,
+                blendingMode: .behindWindow,
+                state: .active
+            )
+            .opacity(appState.settings.backgroundOpacity)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .white.opacity(0.4), location: 0),
+                                .init(color: .clear, location: 0.3),
+                                .init(color: .white.opacity(0.1), location: 1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: .black.opacity(0.3), radius: 12, x: 0, y: 6)
 
             CaptionScrollTextView(
                 text: transcript
@@ -24,7 +64,7 @@ struct CaptionView: View {
             Color.clear
                 .frame(height: 1)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(alignment: .topLeading) {
             topControls
                 .padding(.leading, 10)
@@ -79,7 +119,22 @@ struct CaptionView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
-        .background(.black.opacity(0.22), in: Capsule())
+        .background(
+            Capsule()
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Capsule()
+                        .stroke(
+                            LinearGradient(
+                                colors: [.white.opacity(0.3), .clear],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.5
+                        )
+                )
+                .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+        )
     }
 
     private var closeButton: some View {
@@ -90,7 +145,22 @@ struct CaptionView: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(.white.opacity(0.8))
-        .background(.black.opacity(0.22), in: Circle())
+        .background(
+            Circle()
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                colors: [.white.opacity(0.3), .clear],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.5
+                        )
+                )
+                .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+        )
         .help("Close subtitle screen and stop capture")
     }
 }
