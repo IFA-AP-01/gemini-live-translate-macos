@@ -1,10 +1,14 @@
-# LiveBuddy 🎙️📺
+# Live Translate Buddy 
 
 LiveBuddy is a modern, native macOS application designed to provide real-time audio translation and captioning. It captures system/app audio (using macOS's native **ScreenCaptureKit**) and/or microphone input, streams the downsampled audio to the **Google Gemini Live API** over a bidirectional WebSocket, and displays live subtitles in a floating HUD overlay. It also plays back the translated speech returned by the Gemini model in real time.
 
+
+https://github.com/user-attachments/assets/a5f94b11-80bf-4043-bbfc-63426b781863
+
+
 ---
 
-## 🚀 Key Features
+## Key Features
 
 *   **Real-time Speech-to-Speech & Speech-to-Text Translation**: Leverages Google Gemini's live translation capability (`models/gemini-3.5-live-translate-preview`) via low-latency bidirectional WebSockets.
 *   **Dual-Source Audio Capture**:
@@ -29,7 +33,7 @@ LiveBuddy is a modern, native macOS application designed to provide real-time au
 
 ---
 
-## 🏗️ Architecture & Audio Pipeline
+## Architecture & Audio Pipeline
 
 LiveBuddy uses a modular architecture combining modern macOS system APIs and WebSockets:
 
@@ -67,41 +71,7 @@ LiveBuddy uses a modular architecture combining modern macOS system APIs and Web
 
 ---
 
-## 📂 Project Structure
-
-```
-LiveBuddy/
-├── App/
-│   ├── LiveBuddyApp.swift            # Main application lifecycle entry point
-│   └── AppDelegate.swift             # Delegate managing HUD caption panel lifecycle
-├── Models/
-│   ├── AppSettings.swift             # Codable settings struct (API keys, fonts, etc.)
-│   ├── AppState.swift                # Core ObservableObject managing session logic
-│   └── TranscriptSession.swift       # Models representing saved translation data
-├── Services/
-│   ├── GeminiLiveTranslateClient.swift # Low-level Gemini WebSocket wrapper
-│   ├── MicrophoneCapture.swift       # Audio capture wrapper for local microphone
-│   └── ScreenAudioCapture.swift       # System audio capture via ScreenCaptureKit
-├── Utilities/
-│   ├── PCM16AudioPlayer.swift        # Handles playing back translated audio
-│   └── PCM16AudioProcessor.swift     # Downsampling, mono mixing, and chunking logic
-└── Views/
-    ├── Caption/
-    │   ├── CaptionPanelController.swift # NSPanel controller hosting subtitle overlay
-    │   ├── CaptionView.swift         # HUD UI overlay containing caption scroll text
-    │   └── SubtitleResizeOverlay.swift  # Gesture utility to resize/reposition window
-    ├── Components/
-    │   └── StatusDot.swift           # Visual indicator for connecting/running/stopped
-    ├── MenuBar/
-    │   └── MenuBarView.swift         # Menu bar menu items and quick controls
-    └── Settings/
-        ├── SettingsView.swift        # Side-bar split view with primary settings tabs
-        └── TranscriptsView.swift     # Detail list & search utility for past sessions
-```
-
----
-
-## 🛠️ Prerequisites & Setup
+## Prerequisites & Setup
 
 ### Requirements
 *   **macOS 13.0+** (ScreenCaptureKit requires Ventura or later).
@@ -125,7 +95,7 @@ LiveBuddy/
 
 ---
 
-## ⚙️ Configuration & Customization
+## Configuration & Customization
 
 The app provides deep customization parameters through **Settings**:
 
@@ -142,6 +112,8 @@ The app provides deep customization parameters through **Settings**:
 
 ---
 
-## 📄 License
+##
+
+ License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
