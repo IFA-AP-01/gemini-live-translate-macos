@@ -21,8 +21,10 @@ final class AppState: ObservableObject {
     @Published private(set) var transcriptSessions: [TranscriptSession] = []
     @Published private(set) var logs: [LogEntry] = []
     @Published var showSetupSheet = false
-    @Published var availableMicrophones: [AudioDevice] = []
+    @Published private(set) var availableMicrophones: [AudioDevice] = []
     @Published private(set) var audioLevel: Float = 0.0
+    
+    var openWindowAction: OpenWindowAction?
 
     
     private var propertyListenerBlock: AudioObjectPropertyListenerBlock?
@@ -172,7 +174,11 @@ final class AppState: ObservableObject {
 
     func openSettingsWindow() {
         NSApp.activate(ignoringOtherApps: true)
-        for window in NSApp.windows where window.title == "Settings" {
+        if let openWindowAction {
+            openWindowAction(id: "settings")
+            return
+        }
+        for window in NSApp.windows where window.title == "Settings" || window.identifier?.rawValue.contains("settings") == true {
             window.makeKeyAndOrderFront(nil)
             return
         }

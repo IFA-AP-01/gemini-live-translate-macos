@@ -6,7 +6,7 @@ struct LiveBuddyApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        WindowGroup("Settings", id: "settings") {
+        Window("Settings", id: "settings") {
             SettingsView()
                 .environmentObject(appState)
                 .frame(minWidth: 560, minHeight: 520)
