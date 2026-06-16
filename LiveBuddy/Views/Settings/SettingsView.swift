@@ -23,7 +23,7 @@ struct SettingsView: View {
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(.tint)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("LiveBuddy")
+                        Text("Live Translate")
                             .font(.headline)
                         HStack(spacing: 5) {
                             StatusDot(level: appState.statusLevel)

@@ -175,7 +175,7 @@ enum SubtitleFontName: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-struct SubtitleColor: Codable, Equatable {
+struct SubtitleColor: Codable, Equatable, Hashable {
     var red: Double
     var green: Double
     var blue: Double

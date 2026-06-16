@@ -21,6 +21,7 @@ struct LiveBuddyApp: App {
             MenuBarView()
                 .environmentObject(appState)
         }
+        .menuBarExtraStyle(.window)
     }
 }
 
